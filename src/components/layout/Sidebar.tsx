@@ -9,8 +9,6 @@ import {
   LogOut,
   Menu,
   X,
-  Settings,
-  FileText,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -73,7 +71,7 @@ export const Sidebar: React.FC = () => {
       <div className="p-4 border-t border-slate-700">
         <div className="glass rounded-lg p-4 mb-3">
           <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
+            <div className="w-10 h-10 rounded-full bg-linear-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
               {user?.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
