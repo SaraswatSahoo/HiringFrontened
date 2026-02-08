@@ -19,6 +19,7 @@ import {
   BarChart3,
   RefreshCw,
   ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,6 +28,7 @@ export const DashboardPage: React.FC = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [adminData, setAdminData] = useState<any>(null);
   const [recentJDs, setRecentJDs] = useState<any[]>([]);
 
@@ -36,17 +38,22 @@ export const DashboardPage: React.FC = () => {
 
   const fetchDashboardData = async (silent = false) => {
     try {
-      if (!silent) setLoading(true);
+      if (!silent) {
+        setLoading(true);
+        setError(null);
+      }
       setRefreshing(silent);
 
       const [adminDash, jds] = await Promise.all([
         dashboardAPI.getAdminDashboard(),
         jdAPI.getAll({ limit: 5, status: 'ACTIVE' }),
       ]);
+      
       setAdminData(adminDash);
-      setRecentJDs(jds.jds);
-    } catch (error) {
+      setRecentJDs(jds?.jds || []);
+    } catch (error: any) {
       console.error('Failed to fetch dashboard:', error);
+      setError(error.response?.data?.error || error.message || 'Failed to load dashboard');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -62,6 +69,22 @@ export const DashboardPage: React.FC = () => {
       <Layout title="Dashboard">
         <div className="flex items-center justify-center h-96">
           <Spinner size="lg" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (error) {
+    return (
+      <Layout title="Dashboard">
+        <div className="text-center py-16">
+          <AlertCircle className="h-16 w-16 mx-auto mb-4 text-red-500" />
+          <h3 className="text-xl font-semibold text-white mb-2">Error Loading Dashboard</h3>
+          <p className="text-slate-400 mb-6">{error}</p>
+          <Button onClick={() => fetchDashboardData()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Retry
+          </Button>
         </div>
       </Layout>
     );
@@ -166,7 +189,7 @@ export const DashboardPage: React.FC = () => {
             </button>
           </div>
           
-          {recentJDs.length > 0 ? (
+          {recentJDs && recentJDs.length > 0 ? (
             <div className="space-y-3">
               {recentJDs.map((jd, index) => (
                 <div
@@ -329,13 +352,13 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Charts Section */}
-      {adminData?.jdStats && adminData.jdStats.length > 0 && (
+      {adminData?.jdStats && Array.isArray(adminData.jdStats) && adminData.jdStats.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-fade-in">
           <StageChart
             data={adminData.jdStats.slice(0, 5).map((jd: any) => ({
-              stageName: jd.title.length > 20 ? jd.title.substring(0, 20) + '...' : jd.title,
-              count: jd.candidateCount,
-              percentage: ((jd.candidateCount / (adminData?.overview?.totalCandidates || 1)) * 100).toFixed(1),
+              stageName: jd.title && jd.title.length > 20 ? jd.title.substring(0, 20) + '...' : jd.title || 'Untitled',
+              count: jd.candidateCount || 0,
+              percentage: ((jd.candidateCount || 0) / (adminData?.overview?.totalCandidates || 1) * 100).toFixed(1),
             }))}
           />
           
@@ -349,20 +372,20 @@ export const DashboardPage: React.FC = () => {
             <div className="space-y-4">
               {adminData.jdStats.slice(0, 5).map((jd: any, index: number) => (
                 <div 
-                  key={index} 
+                  key={jd.id || index} 
                   className="cursor-pointer hover:bg-slate-800/50 p-3 -mx-3 rounded-lg transition-colors"
                   onClick={() => navigate(`/jobs/${jd.id}`)}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm text-slate-300 font-medium truncate max-w-50">
-                      {jd.title}
+                      {jd.title || 'Untitled'}
                     </span>
                     <div className="flex items-center space-x-3">
                       <span className="text-xs text-slate-500">
-                        {jd.candidateCount}/{jd.openings || 100}
+                        {jd.candidateCount || 0}/{jd.openings || 1}
                       </span>
                       <span className="text-sm font-semibold text-white">
-                        {Math.round((jd.candidateCount / (jd.openings || 100)) * 100)}%
+                        {Math.round((jd.candidateCount || 0) / (jd.openings || 1) * 100)}%
                       </span>
                     </div>
                   </div>
@@ -370,7 +393,7 @@ export const DashboardPage: React.FC = () => {
                     <div
                       className="bg-linear-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
                       style={{
-                        width: `${Math.min((jd.candidateCount / (jd.openings || 100)) * 100, 100)}%`,
+                        width: `${Math.min((jd.candidateCount || 0) / (jd.openings || 1) * 100, 100)}%`,
                       }}
                     />
                   </div>
