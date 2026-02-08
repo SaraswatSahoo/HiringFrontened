@@ -88,7 +88,7 @@ export const CandidateListPage: React.FC = () => {
       setTotalPages(candidatesData.pagination.totalPages);
       setTotalCandidates(candidatesData.pagination.total);
       setJD(jdData.jd);
-      setStages(jdData.stages);
+      setStages(jdData.jd.stages || []);
     } catch (error) {
       console.error('Failed to fetch candidates:', error);
     } finally {
