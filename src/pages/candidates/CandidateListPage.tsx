@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Table } from '../../components/ui/Table';
 import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
-import { candidateAPI } from '../../api/candidate';
+import { candidateAPI, type CandidateFilters } from '../../api/candidate';
 import { jdAPI } from '../../api/jd';
 import type { Candidate, JobDescription, Stage } from '../../types';
 import {
@@ -20,6 +20,8 @@ import {
   RefreshCw,
   X,
   AlertCircle,
+  ChevronDown,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 export const CandidateListPage: React.FC = () => {
@@ -35,16 +37,31 @@ export const CandidateListPage: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showMoveModal, setShowMoveModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [targetStage, setTargetStage] = useState('');
   const [movingCandidates, setMovingCandidates] = useState(false);
 
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<CandidateFilters>({
     search: '',
-    stageId: preSelectedStageId || '',
-    isEligible: '',
+    stageId: preSelectedStageId || undefined,
+    isEligible: undefined,
+    applicationStatus: undefined,
+    offerStatus: undefined,
     college: '',
     degree: '',
-    passOutYear: '',
+    branch: '',
+    stream: '',
+    passOutYear: undefined,
+    minCGPA: undefined,
+    maxCGPA: undefined,
+    city: '',
+    state: '',
+    hasWorkExperience: undefined,
+    hasJoined: undefined,
+    gender: undefined,
+    skills: '',
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
   });
 
   const [page, setPage] = useState(1);
@@ -70,17 +87,17 @@ export const CandidateListPage: React.FC = () => {
       if (!silent) setLoading(true);
       setRefreshing(silent);
 
+      // Clean filters - remove empty strings and undefined values
+      const cleanFilters: CandidateFilters = {
+        page,
+        limit: 20,
+        ...Object.fromEntries(
+          Object.entries(filters).filter(([_, v]) => v !== '' && v !== undefined)
+        ),
+      };
+
       const [candidatesData, jdData] = await Promise.all([
-        candidateAPI.getByJD(jdId!, {
-          page,
-          limit: 20,
-          search: filters.search || undefined,
-          stageId: filters.stageId || undefined,
-          isEligible: filters.isEligible ? filters.isEligible === 'true' : undefined,
-          college: filters.college || undefined,
-          degree: filters.degree || undefined,
-          passOutYear: filters.passOutYear ? Number(filters.passOutYear) : undefined,
-        }),
+        candidateAPI.getByJD(jdId!, cleanFilters),
         jdAPI.getById(jdId!),
       ]);
 
@@ -135,19 +152,69 @@ export const CandidateListPage: React.FC = () => {
   const clearFilters = () => {
     setFilters({
       search: '',
-      stageId: '',
-      isEligible: '',
+      stageId: undefined,
+      isEligible: undefined,
+      applicationStatus: undefined,
+      offerStatus: undefined,
       college: '',
       degree: '',
-      passOutYear: '',
+      branch: '',
+      stream: '',
+      passOutYear: undefined,
+      minCGPA: undefined,
+      maxCGPA: undefined,
+      city: '',
+      state: '',
+      hasWorkExperience: undefined,
+      hasJoined: undefined,
+      gender: undefined,
+      skills: '',
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
     });
+    setShowAdvancedFilters(false);
   };
 
-  const hasActiveFilters = Object.values(filters).some((v) => v);
+  const hasActiveFilters = Object.entries(filters).some(
+    ([key, v]) =>
+      v !== '' &&
+      v !== undefined &&
+      key !== 'sortBy' &&
+      key !== 'sortOrder' &&
+      key !== 'search'
+  );
 
-  const handleExport = () => {
-    // TODO: Implement CSV export
-    alert('Export functionality coming soon!');
+  const handleExport = async () => {
+    try {
+      // TODO: Implement actual CSV export from backend
+      const csvContent = candidates.map(c => ({
+        Name: c.name,
+        Email: c.email,
+        Phone: c.phone,
+        College: c.college,
+        Degree: c.degree,
+        Branch: c.branch || 'N/A',
+        CGPA: c.cgpa || 'N/A',
+        PassOutYear: c.passOutYear,
+        Eligible: c.isEligible ? 'Yes' : 'No',
+        Stage: c.currentStage?.name || 'N/A',
+      }));
+      
+      const csv = [
+        Object.keys(csvContent[0]).join(','),
+        ...csvContent.map(row => Object.values(row).join(','))
+      ].join('\n');
+      
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `candidates_${jd?.title || 'export'}_${new Date().toISOString().split('T')[0]}.csv`;
+      a.click();
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    }
   };
 
   const columns = [
@@ -187,6 +254,7 @@ export const CandidateListPage: React.FC = () => {
           <p className="text-xs text-slate-400">
             {candidate.degree}
             {candidate.branch && ` - ${candidate.branch}`}
+            {candidate.stream && ` (${candidate.stream})`}
           </p>
         </div>
       ),
@@ -197,19 +265,26 @@ export const CandidateListPage: React.FC = () => {
       render: (candidate: Candidate) => (
         <div>
           <p className="text-sm text-slate-200">
-            CGPA: {candidate.cgpa ? candidate.cgpa.toFixed(2) : 'N/A'}
+            CGPA: {candidate.cgpa ? Number(candidate.cgpa).toFixed(2) : 'N/A'}
           </p>
           <p className="text-xs text-slate-400">Year: {candidate.passOutYear}</p>
         </div>
       ),
     },
     {
-      key: 'eligibility',
-      label: 'Eligibility',
+      key: 'status',
+      label: 'Status',
       render: (candidate: Candidate) => (
-        <Badge variant={candidate.isEligible ? 'success' : 'error'}>
-          {candidate.isEligible ? 'Eligible' : 'Not Eligible'}
-        </Badge>
+        <div className="space-y-1">
+          <Badge variant={candidate.isEligible ? 'success' : 'error'}>
+            {candidate.isEligible ? 'Eligible' : 'Not Eligible'}
+          </Badge>
+          {candidate.applicationStatus && (
+            <Badge variant="info">
+              {candidate.applicationStatus}
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -309,10 +384,10 @@ export const CandidateListPage: React.FC = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <input
                 type="text"
-                value={filters.search}
+                value={filters.search || ''}
                 onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                 onKeyPress={(e) => e.key === 'Enter' && fetchData()}
-                placeholder="Search by name, email, phone..."
+                placeholder="Search by name, email, phone, college..."
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
               />
             </div>
@@ -328,13 +403,14 @@ export const CandidateListPage: React.FC = () => {
             )}
           </div>
 
-          {/* Filter Row */}
+          {/* Basic Filters Row */}
           <div className="flex flex-wrap items-center gap-3">
             <Filter className="h-5 w-5 text-slate-400 shrink-0" />
             
+            {/* Stage Filter */}
             <select
-              value={filters.stageId}
-              onChange={(e) => setFilters({ ...filters, stageId: e.target.value })}
+              value={filters.stageId || ''}
+              onChange={(e) => setFilters({ ...filters, stageId: e.target.value || undefined })}
               className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">All Stages</option>
@@ -345,9 +421,15 @@ export const CandidateListPage: React.FC = () => {
               ))}
             </select>
 
+            {/* Eligibility Filter */}
             <select
-              value={filters.isEligible}
-              onChange={(e) => setFilters({ ...filters, isEligible: e.target.value })}
+              value={filters.isEligible === undefined ? '' : String(filters.isEligible)}
+              onChange={(e) => 
+                setFilters({ 
+                  ...filters, 
+                  isEligible: e.target.value === '' ? undefined : e.target.value === 'true' 
+                })
+              }
               className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">All Eligibility</option>
@@ -355,39 +437,260 @@ export const CandidateListPage: React.FC = () => {
               <option value="false">Not Eligible</option>
             </select>
 
+            {/* Application Status Filter */}
+            <select
+              value={filters.applicationStatus || ''}
+              onChange={(e) => 
+                setFilters({ 
+                  ...filters, 
+                  applicationStatus: e.target.value as any || undefined 
+                })
+              }
+              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">All Application Status</option>
+              <option value="PENDING">Pending</option>
+              <option value="REVIEWING">Reviewing</option>
+              <option value="PROCESSED">Processed</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+
+            {/* College Filter */}
             <input
               type="text"
-              value={filters.college}
+              value={filters.college || ''}
               onChange={(e) => setFilters({ ...filters, college: e.target.value })}
               placeholder="Filter by college..."
               className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-37.5"
             />
 
-            <input
-              type="text"
-              value={filters.degree}
-              onChange={(e) => setFilters({ ...filters, degree: e.target.value })}
-              placeholder="Filter by degree..."
-              className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-30"
-            />
-
+            {/* Pass Out Year Filter */}
             <input
               type="number"
-              value={filters.passOutYear}
-              onChange={(e) => setFilters({ ...filters, passOutYear: e.target.value })}
+              value={filters.passOutYear || ''}
+              onChange={(e) => 
+                setFilters({ 
+                  ...filters, 
+                  passOutYear: e.target.value ? Number(e.target.value) : undefined 
+                })
+              }
               placeholder="Year..."
               className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 w-24"
               min="2020"
-              max="2030"
+              max="2035"
             />
+
+            {/* Advanced Filters Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="ml-auto"
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-1" />
+              Advanced
+              <ChevronDown className={`h-4 w-4 ml-1 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+            </Button>
 
             {hasActiveFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
                 <X className="h-4 w-4 mr-1" />
-                Clear
+                Clear All
               </Button>
             )}
           </div>
+
+          {/* Advanced Filters */}
+          {showAdvancedFilters && (
+            <div className="pt-4 border-t border-slate-700 space-y-3 animate-slide-in-up">
+              <h4 className="text-sm font-semibold text-slate-300 mb-3">Advanced Filters</h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {/* Degree */}
+                <input
+                  type="text"
+                  value={filters.degree || ''}
+                  onChange={(e) => setFilters({ ...filters, degree: e.target.value })}
+                  placeholder="Degree (e.g., B.Tech)"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* Branch */}
+                <input
+                  type="text"
+                  value={filters.branch || ''}
+                  onChange={(e) => setFilters({ ...filters, branch: e.target.value })}
+                  placeholder="Branch (e.g., CSE)"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* Stream */}
+                <input
+                  type="text"
+                  value={filters.stream || ''}
+                  onChange={(e) => setFilters({ ...filters, stream: e.target.value })}
+                  placeholder="Stream"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* Min CGPA */}
+                <input
+                  type="number"
+                  value={filters.minCGPA || ''}
+                  onChange={(e) => 
+                    setFilters({ 
+                      ...filters, 
+                      minCGPA: e.target.value ? Number(e.target.value) : undefined 
+                    })
+                  }
+                  placeholder="Min CGPA"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* Max CGPA */}
+                <input
+                  type="number"
+                  value={filters.maxCGPA || ''}
+                  onChange={(e) => 
+                    setFilters({ 
+                      ...filters, 
+                      maxCGPA: e.target.value ? Number(e.target.value) : undefined 
+                    })
+                  }
+                  placeholder="Max CGPA"
+                  step="0.1"
+                  min="0"
+                  max="10"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* City */}
+                <input
+                  type="text"
+                  value={filters.city || ''}
+                  onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+                  placeholder="City"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* State */}
+                <input
+                  type="text"
+                  value={filters.state || ''}
+                  onChange={(e) => setFilters({ ...filters, state: e.target.value })}
+                  placeholder="State"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* Skills */}
+                <input
+                  type="text"
+                  value={filters.skills || ''}
+                  onChange={(e) => setFilters({ ...filters, skills: e.target.value })}
+                  placeholder="Skills (comma-separated)"
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+
+                {/* Gender */}
+                <select
+                  value={filters.gender || ''}
+                  onChange={(e) => 
+                    setFilters({ 
+                      ...filters, 
+                      gender: e.target.value as any || undefined 
+                    })
+                  }
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">All Genders</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+
+                {/* Work Experience */}
+                <select
+                  value={filters.hasWorkExperience === undefined ? '' : String(filters.hasWorkExperience)}
+                  onChange={(e) => 
+                    setFilters({ 
+                      ...filters, 
+                      hasWorkExperience: e.target.value === '' ? undefined : e.target.value === 'true' 
+                    })
+                  }
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Any Experience</option>
+                  <option value="true">With Experience</option>
+                  <option value="false">Freshers Only</option>
+                </select>
+
+                {/* Offer Status */}
+                <select
+                  value={filters.offerStatus || ''}
+                  onChange={(e) => 
+                    setFilters({ 
+                      ...filters, 
+                      offerStatus: e.target.value as any || undefined 
+                    })
+                  }
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">All Offer Status</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="SENT">Sent</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="WITHDRAWN">Withdrawn</option>
+                </select>
+
+                {/* Has Joined */}
+                <select
+                  value={filters.hasJoined === undefined ? '' : String(filters.hasJoined)}
+                  onChange={(e) => 
+                    setFilters({ 
+                      ...filters, 
+                      hasJoined: e.target.value === '' ? undefined : e.target.value === 'true' 
+                    })
+                  }
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Joining Status</option>
+                  <option value="true">Joined</option>
+                  <option value="false">Not Joined</option>
+                </select>
+              </div>
+
+              {/* Sorting */}
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-700">
+                <span className="text-sm text-slate-400">Sort by:</span>
+                <select
+                  value={filters.sortBy || 'createdAt'}
+                  onChange={(e) => setFilters({ ...filters, sortBy: e.target.value as any })}
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="name">Name</option>
+                  <option value="email">Email</option>
+                  <option value="college">College</option>
+                  <option value="cgpa">CGPA</option>
+                  <option value="passOutYear">Pass Out Year</option>
+                  <option value="appliedAt">Applied Date</option>
+                  <option value="lastActivityAt">Last Activity</option>
+                  <option value="createdAt">Created Date</option>
+                </select>
+                <select
+                  value={filters.sortOrder || 'desc'}
+                  onChange={(e) => setFilters({ ...filters, sortOrder: e.target.value as any })}
+                  className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="asc">Ascending</option>
+                  <option value="desc">Descending</option>
+                </select>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 

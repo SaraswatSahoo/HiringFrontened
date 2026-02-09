@@ -147,57 +147,160 @@ export interface Stage {
 
 // ==================== CANDIDATE TYPES ====================
 
+export type ApplicationStatus = 'PENDING' | 'REVIEWING' | 'PROCESSED' | 'REJECTED';
+export type OfferStatus = 'PENDING' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'WITHDRAWN';
+export type Gender = 'Male' | 'Female' | 'Other' | 'Prefer not to say';
+
 export interface Candidate {
   id: string;
+  
+  // Basic Information
   name: string;
   email: string;
   phone: string;
   alternatePhone?: string;
+  dateOfBirth?: string;
+  gender?: Gender;
   
-  // Academic Information
+  // College/Academic Information
   college: string;
   degree: string;
   branch?: string;
+  stream?: string;
   passOutYear: number;
   cgpa?: number;
   backlogs?: number;
+  activeBacklogs?: number;
   tenthPercentage?: number;
   twelfthPercentage?: number;
   
   // Documents
   resumeLink?: string;
+  photoUrl?: string;
+  idProofUrl?: string;
+  marksheetUrls?: string[];
   
-  // Status
+  // Contact & Location
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  
+  // Skills & Experience
+  skills?: string[];
+  certifications?: string[];
+  projects?: string[];
+  internships?: string[];
+  hasWorkExperience?: boolean;
+  yearsOfExperience?: number;
+  
+  // Application Status
   isEligible: boolean;
-  tags: string[];
-  
-  // References
+  ineligibilityReason?: string;
+  applicationStatus?: ApplicationStatus;
   currentStageId?: string;
+  
+  // Interview & Assessment
+  interviewScore?: number;
+  technicalScore?: number;
+  hrScore?: number;
+  overallRating?: number;
+  
+  // Offer Details
+  offerStatus?: OfferStatus;
+  offerLetterUrl?: string;
+  offeredCTC?: number;
+  joiningDate?: string;
+  hasJoined?: boolean;
+  
+  // JD Reference
   jdId: string;
   
-  // Metadata
+  // Tags for filtering
+  tags: string[];
+  
+  // Timestamps
+  appliedAt?: string;
+  lastActivityAt?: string;
   createdAt: string;
   updatedAt: string;
   
   // Relations
   currentStage?: Stage;
   jd?: JobDescription;
+  feedbacks?: Feedback[];
+  stageHistory?: CandidateStage[];
+  communications?: CandidateComm[];
+  
+  // Counts
+  _count?: {
+    feedbacks?: number;
+    communications?: number;
+    stageHistory?: number;
+  };
 }
 
 export interface CreateCandidateData {
+  // Basic Information
   name: string;
   email: string;
   phone: string;
   alternatePhone?: string;
+  dateOfBirth?: string;
+  gender?: Gender;
+  
+  // College/Academic Information
   college: string;
   degree: string;
   branch?: string;
+  stream?: string;
   passOutYear: number;
   cgpa?: number;
   backlogs?: number;
+  activeBacklogs?: number;
   tenthPercentage?: number;
   twelfthPercentage?: number;
+  
+  // Documents
   resumeLink?: string;
+  photoUrl?: string;
+  idProofUrl?: string;
+  marksheetUrls?: string[];
+  
+  // Location
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+  
+  // Skills & Experience
+  skills?: string[];
+  certifications?: string[];
+  projects?: string[];
+  internships?: string[];
+  hasWorkExperience?: boolean;
+  yearsOfExperience?: number;
+  
+  // Application Status
+  applicationStatus?: ApplicationStatus;
+  ineligibilityReason?: string;
+  
+  // Assessment Scores
+  interviewScore?: number;
+  technicalScore?: number;
+  hrScore?: number;
+  overallRating?: number;
+  
+  // Offer Details
+  offerStatus?: OfferStatus;
+  offerLetterUrl?: string;
+  offeredCTC?: number;
+  joiningDate?: string;
+  hasJoined?: boolean;
+  
+  // Required
   jdId: string;
   tags?: string[];
 }
@@ -205,18 +308,75 @@ export interface CreateCandidateData {
 export interface UpdateCandidateData extends Partial<CreateCandidateData> {}
 
 export interface CandidateFilters {
-  jdId?: string;
+  // Pagination
   page?: number;
   limit?: number;
+  
+  // Stage & Status Filters
   stageId?: string;
   isEligible?: boolean;
+  applicationStatus?: ApplicationStatus;
+  offerStatus?: OfferStatus;
+  
+  // Academic Filters
   college?: string;
   degree?: string;
   branch?: string;
+  stream?: string;
   passOutYear?: number;
   minCGPA?: number;
   maxCGPA?: number;
+  
+  // Location Filters
+  city?: string;
+  state?: string;
+  
+  // Experience & Demographics
+  hasWorkExperience?: boolean;
+  hasJoined?: boolean;
+  gender?: Gender;
+  
+  // Skills & Search
+  skills?: string; // Comma-separated
   search?: string;
+  
+  // Sorting
+  sortBy?: 'name' | 'email' | 'college' | 'cgpa' | 'passOutYear' | 'appliedAt' | 'lastActivityAt' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// ==================== CANDIDATE STAGE HISTORY ====================
+
+export interface CandidateStage {
+  id: string;
+  candidateId: string;
+  stageId: string;
+  enteredAt: string;
+  exitedAt?: string;
+  notes?: string;
+  interviewDate?: string;
+  interviewMode?: 'Online' | 'Offline' | 'Telephonic' | 'Video';
+  interviewerName?: string;
+  createdAt: string;
+  updatedAt: string;
+  stage?: Stage;
+  candidate?: Candidate;
+}
+
+// ==================== CANDIDATE COMMUNICATION ====================
+
+export interface CandidateComm {
+  id: string;
+  candidateId: string;
+  communicationId: string;
+  status: CommStatus;
+  sentAt?: string;
+  deliveredAt?: string;
+  failureReason?: string;
+  createdAt: string;
+  updatedAt: string;
+  candidate?: Candidate;
+  communication?: Communication;
 }
 
 // ==================== BULK UPLOAD TYPES ====================
@@ -225,17 +385,49 @@ export type UploadStatus = 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'PARTIAL';
 
 export interface BulkUpload {
   id: string;
+  
+  // Relation
   jdId: string;
+  jd?: {
+    id: string;
+    title: string;
+    department: string;
+  };
+  
+  // File info
   fileName: string;
   fileUrl?: string;
+  fileSize?: number; // bytes
+  fileType?: string; // CSV, XLSX, etc.
+  
+  // Processing stats
   totalRows: number;
   successCount: number;
   failureCount: number;
+  processedRows: number; // progress tracking
+  
+  // Status
   status: UploadStatus;
-  errorLog?: any;
+  
+  // Error handling
+  errorLog?: any; // Array of row-level errors
+  errorMessage?: string; // High-level failure reason
+  
+  // Audit
   uploadedBy: string;
+  uploader?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  
+  // Retry support
+  retryCount: number;
+  
+  // Timestamps
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
 }
 
 export interface BulkUploadResult {
@@ -243,8 +435,59 @@ export interface BulkUploadResult {
   totalRows: number;
   successCount: number;
   failureCount: number;
+  processedRows: number;
   status: UploadStatus;
   errorLog?: any;
+  errorMessage?: string;
+  retryCount: number;
+  completedAt?: string;
+}
+
+export interface BulkUploadListItem extends BulkUpload {
+  progress: number; // Calculated percentage (0-100)
+}
+
+export interface BulkUploadError {
+  row: number;
+  error: string;
+  data: any;
+}
+
+export interface BulkUploadStats {
+  total: number;
+  processing: number;
+  completed: number;
+  failed: number;
+  partial: number;
+}
+
+export interface CreateBulkUploadData {
+  jdId: string;
+  fileName: string;
+  fileSize?: number;
+  fileType?: string;
+  totalRows?: number;
+}
+
+export interface UpdateBulkUploadData {
+  totalRows?: number;
+  successCount?: number;
+  failureCount?: number;
+  processedRows?: number;
+  status?: UploadStatus;
+  errorLog?: any;
+  errorMessage?: string;
+  completedAt?: string;
+}
+
+export interface BulkUploadFilters {
+  page?: number;
+  limit?: number;
+  status?: UploadStatus;
+  jdId?: string;
+  uploadedBy?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 // ==================== DASHBOARD & ANALYTICS TYPES ====================
@@ -364,6 +607,8 @@ export interface Template {
 
 // ==================== FEEDBACK TYPES ====================
 
+export type FeedbackRecommendation = 'STRONG_YES' | 'YES' | 'MAYBE' | 'NO';
+
 export interface Feedback {
   id: string;
   candidateId: string;
@@ -374,7 +619,7 @@ export interface Feedback {
   communication?: number;
   cultureFit?: number;
   problemSolving?: number;
-  recommendation?: string; // "STRONG_YES", "YES", "MAYBE", "NO"
+  recommendation?: FeedbackRecommendation;
   createdAt: string;
   updatedAt: string;
   givenBy?: {
@@ -382,6 +627,7 @@ export interface Feedback {
     name: string;
     email: string;
   };
+  candidate?: Candidate;
 }
 
 export interface CreateFeedbackData {
@@ -392,7 +638,7 @@ export interface CreateFeedbackData {
   communication?: number;
   cultureFit?: number;
   problemSolving?: number;
-  recommendation?: string;
+  recommendation?: FeedbackRecommendation;
 }
 
 // ==================== PAGINATION & API RESPONSE ====================
@@ -471,4 +717,44 @@ export interface ApiRequestConfig {
   data?: any;
   params?: any;
   headers?: Record<string, string>;
+}
+
+// ==================== MOVE STAGE TYPES ====================
+
+export interface MoveStageData {
+  stageId: string;
+  notes?: string;
+  interviewDate?: string;
+  interviewMode?: 'Online' | 'Offline' | 'Telephonic' | 'Video';
+  interviewerName?: string;
+}
+
+export interface BulkMoveStageData {
+  candidateIds: string[];
+  stageId: string;
+  notes?: string;
+}
+
+export interface BulkUpdateOffersData {
+  candidateIds: string[];
+  offerStatus: OfferStatus;
+}
+
+export interface UpdateOfferStatusData {
+  offerStatus: OfferStatus;
+  offerLetterUrl?: string;
+  offeredCTC?: number;
+  joiningDate?: string;
+}
+
+export interface UpdateScoresData {
+  interviewScore?: number;
+  technicalScore?: number;
+  hrScore?: number;
+  overallRating?: number;
+}
+
+export interface SkillsFilterParams {
+  skills: string; // Comma-separated
+  matchAll?: boolean;
 }
