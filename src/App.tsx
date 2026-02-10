@@ -1,5 +1,6 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
@@ -22,6 +23,14 @@ import { CandidateDetailPage } from './pages/candidates/CandidateDetailPage';
 // Bulk Upload Pages
 import { BulkUploadPage } from './pages/bulk/BulkUploadPage';
 import { UploadHistoryPage } from './pages/bulk/UploadHistoryPage';
+
+// Email Pages ✅ NEW
+import SendEmailPage from './pages/email/SendEmailPage';
+import EmailHistoryPage from './pages/email/EmailHistoryPage';
+import TemplateListPage from './pages/email/TemplateListPage';
+
+// ✅ React Query client (create once)
+const queryClient = new QueryClient();
 
 // Error Boundary Component
 interface ErrorBoundaryProps {
@@ -252,6 +261,40 @@ function AppRoutes() {
         }
       />
 
+      {/* Email Routes ✅ NEW */}
+      <Route
+        path="/emails"
+        element={
+          <ProtectedRoute>
+            <ErrorBoundary>
+              <EmailHistoryPage />
+            </ErrorBoundary>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/emails/send"
+        element={
+          <ProtectedRoute>
+            <ErrorBoundary>
+              <SendEmailPage />
+            </ErrorBoundary>
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Template Routes ✅ NEW */}
+      <Route
+        path="/templates"
+        element={
+          <ProtectedRoute>
+            <ErrorBoundary>
+              <TemplateListPage />
+            </ErrorBoundary>
+          </ProtectedRoute>
+        }
+      />
+
       {/* Analytics - Redirects to Dashboard for now */}
       <Route
         path="/analytics"
@@ -274,11 +317,13 @@ function AppRoutes() {
 function App() {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <BrowserRouter>
-          <AppRoutes />
-        </BrowserRouter>
-      </AuthProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <BrowserRouter>
+            <AppRoutes />
+          </BrowserRouter>
+        </AuthProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }
