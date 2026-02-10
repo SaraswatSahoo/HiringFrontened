@@ -105,6 +105,11 @@ export const CandidateDetailPage: React.FC = () => {
     }
   };
 
+  const handleSendEmail = () => {
+    if (!candidate) return;
+    navigate(`/emails/send?candidateId=${candidate.id}&jdId=${candidate.jdId}`);
+  };
+
   if (loading) {
     return (
       <Layout title="Loading...">
@@ -144,6 +149,11 @@ export const CandidateDetailPage: React.FC = () => {
             <Badge variant="success">{candidate.offerStatus}</Badge>
           )}
           <div className="flex-1" />
+          {/* Email action – header */}
+          <Button variant="secondary" size="sm" onClick={handleSendEmail}>
+            <Mail className="h-4 w-4 mr-2" />
+            Send Email
+          </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowMoveModal(true)}>
             <ArrowRight className="h-4 w-4 mr-2" />
             Move Stage
@@ -758,6 +768,16 @@ export const CandidateDetailPage: React.FC = () => {
             <Card className="animate-fade-in">
               <h3 className="text-lg font-semibold text-white mb-4">Actions</h3>
               <div className="space-y-2">
+                {/* Email action – sidebar */}
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="w-full"
+                  onClick={handleSendEmail}
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send Email
+                </Button>
                 <Button
                   variant="secondary"
                   size="sm"

@@ -22,6 +22,7 @@ import {
   AlertCircle,
   ChevronDown,
   SlidersHorizontal,
+  Mail,
 } from 'lucide-react';
 
 export const CandidateListPage: React.FC = () => {
@@ -217,6 +218,16 @@ export const CandidateListPage: React.FC = () => {
     }
   };
 
+  //Bulk Email Handler
+  const handleBulkEmail = () => {
+    if (!jdId) return;
+    if (selectedIds.length === 0) {
+      alert('Please select at least one candidate.');
+      return;
+    }
+    navigate(`/emails/send?jdId=${jdId}&candidateIds=${selectedIds.join(',')}`);
+  };
+
   const columns = [
     {
       key: 'select',
@@ -361,6 +372,16 @@ export const CandidateListPage: React.FC = () => {
           )}
         </div>
         <div className="flex items-center space-x-2">
+          {selectedIds.length > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleBulkEmail}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Email ({selectedIds.length})
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

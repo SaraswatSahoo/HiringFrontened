@@ -9,6 +9,8 @@ import {
   LogOut,
   Menu,
   X,
+  Mail,          // ✅ NEW
+  FileText,      // ✅ NEW
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -24,6 +26,8 @@ export const Sidebar: React.FC = () => {
     { path: '/candidates', icon: Users, label: 'Candidates' },
     { path: '/bulk-upload', icon: Upload, label: 'Bulk Upload' },
     { path: '/analytics', icon: BarChart3, label: 'Analytics' },
+    { path: '/emails', icon: Mail, label: 'Emails' },
+    { path: '/templates', icon: FileText, label: 'Templates' },
   ];
 
   const handleLogout = async () => {
@@ -105,7 +109,7 @@ export const Sidebar: React.FC = () => {
         {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar Overlay */}
       {isMobileOpen && (
         <div
           className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"

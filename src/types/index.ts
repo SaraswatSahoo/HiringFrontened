@@ -363,7 +363,33 @@ export interface CandidateStage {
   candidate?: Candidate;
 }
 
+export interface MoveStageData {
+  stageId: string;
+  notes?: string;
+  interviewDate?: string;
+  interviewMode?: 'Online' | 'Offline' | 'Telephonic' | 'Video';
+  interviewerName?: string;
+}
+
+export interface BulkMoveStageData {
+  candidateIds: string[];
+  stageId: string;
+  notes?: string;
+}
+
 // ==================== CANDIDATE COMMUNICATION ====================
+
+export type CommStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'FAILED';
+
+export interface Communication {
+  id: string;
+  jdId: string;
+  subject: string;
+  message: string;
+  type: 'EMAIL' | 'SMS';
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface CandidateComm {
   id: string;
@@ -571,38 +597,308 @@ export interface StreamStats {
   avgCGPA: string | null;
 }
 
-// ==================== COMMUNICATION TYPES ====================
+// ==================== EMAIL ENUMS ====================
 
-export type CommChannel = 'EMAIL' | 'WHATSAPP' | 'SMS';
-export type CommStatus = 'PENDING' | 'SENT' | 'DELIVERED' | 'FAILED';
+export enum EmailStatus {
+  PENDING = 'PENDING',
+  SENT = 'SENT',
+  DELIVERED = 'DELIVERED',
+  FAILED = 'FAILED',
+  BOUNCED = 'BOUNCED',
+}
 
-export interface Communication {
+export enum EmailType {
+  BULK = 'BULK',
+  INDIVIDUAL = 'INDIVIDUAL',
+}
+
+export enum TemplateCategory {
+  INTERVIEW_CALL = 'INTERVIEW_CALL',
+  TEST_LINK = 'TEST_LINK',
+  REJECTION = 'REJECTION',
+  OFFER = 'OFFER',
+  SHORTLIST = 'SHORTLIST',
+  REMINDER = 'REMINDER',
+  FEEDBACK_REQUEST = 'FEEDBACK_REQUEST',
+  ONBOARDING = 'ONBOARDING',
+  GENERAL = 'GENERAL',
+}
+
+// ==================== EMAIL INTERFACES ====================
+
+export interface Email {
   id: string;
   jdId: string;
-  channel: CommChannel;
-  templateId?: string;
-  subject?: string;
+  type: EmailType;
+  templateId?: string | null;
+  subject: string;
   message: string;
+  htmlBody?: string | null;
+  attachments: string[];
+  variables?: any;
+  filters?: any;
   totalRecipients: number;
   sentCount: number;
+  deliveredCount: number;
   failedCount: number;
-  scheduledAt?: string;
-  sentAt?: string;
+  bouncedCount: number;
+  scheduledAt?: string | null;
+  sentAt?: string | null;
+  completedAt?: string | null;
+  priority: number;
+  sentBy: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Template {
+export interface CandidateEmail {
   id: string;
-  name: string;
-  channel: CommChannel;
-  category: string; // "INTERVIEW_CALL", "TEST_LINK", "REJECTION", "OFFER"
-  subject?: string;
-  body: string;
-  variables: string[];
-  isActive: boolean;
+  emailId: string;
+  candidateId: string;
+  recipientEmail: string;
+  recipientName: string;
+  personalizedSubject: string;
+  personalizedMessage: string;
+  personalizedHtmlBody?: string | null;
+  status: EmailStatus;
+  sentAt?: string | null;
+  failedAt?: string | null;
+  failureReason?: string | null;
+  smtpResponse?: string | null;
+  messageId?: string | null;
+  retryCount: number;
+  maxRetries: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  description?: string | null;
+  category: TemplateCategory;
+  subject: string;
+  body: string;
+  htmlBody?: string | null;
+  variables: string[];
+  defaultValues?: any;
+  previewData?: any;
+  attachments: string[];
+  usageCount: number;
+  lastUsedAt?: string | null;
+  isActive: boolean;
+  isDefault: boolean;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==================== EMAIL DTOs ====================
+
+export interface CreateEmailDto {
+  jdId: string;
+  type?: EmailType;
+  templateId?: string;
+  subject: string;
+  message: string;
+  htmlBody?: string;
+  attachments?: string[];
+  variables?: Record<string, any>;
+  filters?: Record<string, any>;
+  candidateIds?: string[];
+  scheduledAt?: string;
+  priority?: number;
+  sentBy?: string;
+}
+
+export interface UpdateEmailDto {
+  subject?: string;
+  message?: string;
+  htmlBody?: string;
+  attachments?: string[];
+  variables?: Record<string, any>;
+  scheduledAt?: string;
+  priority?: number;
+}
+
+export interface SendEmailResponse {
+  emailId: string;
+  totalRecipients: number;
+  status: 'pending' | 'scheduled' | 'processing' | 'sent';
+  message: string;
+  scheduledAt?: string;
+}
+
+export interface EmailStats {
+  totalRecipients: number;
+  sentCount: number;
+  deliveredCount: number;
+  failedCount: number;
+  bouncedCount: number;
+  pendingCount: number;
+  successRate: number;
+}
+
+export interface EmailWithRelations extends Email {
+  jd?: {
+    id: string;
+    title: string;
+    department?: string;
+  };
+  template?: EmailTemplate | null;
+  sender?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  recipients?: CandidateEmail[];
+  stats?: EmailStats;
+}
+
+export interface CandidateEmailWithRelations extends CandidateEmail {
+  email?: {
+    id: string;
+    subject: string;
+    type: EmailType;
+  };
+  candidate?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface TemplateVariables {
+  [key: string]: string | number | boolean;
+}
+
+export interface EmailFilters {
+  stageId?: string | string[];
+  isEligible?: boolean;
+  minCGPA?: number;
+  passOutYear?: number | number[];
+  college?: string | string[];
+  degree?: string | string[];
+  applicationStatus?: string | string[];
+  [key: string]: any;
+}
+
+export interface CreateTemplateDto {
+  name: string;
+  description?: string;
+  category: TemplateCategory;
+  subject: string;
+  body: string;
+  htmlBody?: string;
+  variables?: string[];
+  defaultValues?: Record<string, any>;
+  previewData?: Record<string, any>;
+  attachments?: string[];
+  isDefault?: boolean;
+}
+
+export interface UpdateTemplateDto {
+  name?: string;
+  description?: string;
+  category?: TemplateCategory;
+  subject?: string;
+  body?: string;
+  htmlBody?: string;
+  variables?: string[];
+  defaultValues?: Record<string, any>;
+  previewData?: Record<string, any>;
+  attachments?: string[];
+  isActive?: boolean;
+  isDefault?: boolean;
+}
+
+export interface TemplatePreviewDto {
+  templateId: string;
+  variables?: Record<string, any>;
+}
+
+export interface TemplatePreviewResponse {
+  subject: string;
+  body: string;
+  htmlBody?: string;
+}
+
+export interface EmailQueryParams {
+  jdId?: string;
+  type?: EmailType;
+  status?: EmailStatus;
+  sentBy?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'createdAt' | 'sentAt' | 'priority';
+  sortOrder?: 'asc' | 'desc';
+  search?: string;
+}
+
+export interface TemplateQueryParams {
+  category?: TemplateCategory;
+  isActive?: boolean;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sortBy?: 'name' | 'category' | 'usageCount' | 'createdAt';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface EmailListResponse {
+  data: EmailWithRelations[];
+  pagination: Pagination;
+}
+
+export interface TemplateListResponse {
+  templates: EmailTemplate[];
+  pagination: Pagination;
+}
+
+export interface CandidateEmailListResponse {
+  emails: CandidateEmailWithRelations[];
+  pagination: Pagination;
+}
+
+export interface SendIndividualEmailDto {
+  candidateId: string;
+  jdId: string;
+  templateId?: string;
+  subject: string;
+  message: string;
+  htmlBody?: string;
+  attachments?: string[];
+  variables?: Record<string, any>;
+}
+
+export interface SendBulkEmailDto {
+  jdId: string;
+  templateId?: string;
+  subject: string;
+  message: string;
+  htmlBody?: string;
+  attachments?: string[];
+  variables?: Record<string, any>;
+  filters?: EmailFilters;
+  candidateIds?: string[];
+}
+
+export interface EmailSendingResult {
+  candidateEmailId: string;
+  candidateId: string;
+  candidateName: string;
+  recipientEmail: string;
+  status: 'success' | 'failed';
+  error?: string;
+}
+
+export interface BulkEmailProgress {
+  emailId: string;
+  totalRecipients: number;
+  sentCount: number;
+  failedCount: number;
+  inProgress: boolean;
+  results: EmailSendingResult[];
 }
 
 // ==================== FEEDBACK TYPES ====================
@@ -694,7 +990,6 @@ export interface SearchParams extends PaginationParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-// Form state types
 export interface FormState<T> {
   data: T;
   loading: boolean;
@@ -702,13 +997,11 @@ export interface FormState<T> {
   success: boolean;
 }
 
-// List response types
 export interface ListResponse<T> {
   items: T[];
   pagination: Pagination;
 }
 
-// Generic API types
 export type ApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 export interface ApiRequestConfig {
@@ -719,21 +1012,7 @@ export interface ApiRequestConfig {
   headers?: Record<string, string>;
 }
 
-// ==================== MOVE STAGE TYPES ====================
-
-export interface MoveStageData {
-  stageId: string;
-  notes?: string;
-  interviewDate?: string;
-  interviewMode?: 'Online' | 'Offline' | 'Telephonic' | 'Video';
-  interviewerName?: string;
-}
-
-export interface BulkMoveStageData {
-  candidateIds: string[];
-  stageId: string;
-  notes?: string;
-}
+// ==================== OFFER & SCORE UPDATES ====================
 
 export interface BulkUpdateOffersData {
   candidateIds: string[];
