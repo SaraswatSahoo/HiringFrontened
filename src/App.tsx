@@ -1,6 +1,7 @@
 import React, { Component, type ErrorInfo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuth } from './hooks/useAuth';
 
@@ -24,10 +25,10 @@ import { CandidateDetailPage } from './pages/candidates/CandidateDetailPage';
 import { BulkUploadPage } from './pages/bulk/BulkUploadPage';
 import { UploadHistoryPage } from './pages/bulk/UploadHistoryPage';
 
-// Email Pages ✅ NEW
 import SendEmailPage from './pages/email/SendEmailPage';
 import EmailHistoryPage from './pages/email/EmailHistoryPage';
 import TemplateListPage from './pages/email/TemplateListPage';
+import { AnalyticsPage } from './pages/analytics/AnalyticsPage';
 
 // ✅ React Query client (create once)
 const queryClient = new QueryClient();
@@ -295,13 +296,13 @@ function AppRoutes() {
         }
       />
 
-      {/* Analytics - Redirects to Dashboard for now */}
+      {/* Analytics */}
       <Route
         path="/analytics"
         element={
           <ProtectedRoute>
             <ErrorBoundary>
-              <DashboardPage />
+              <AnalyticsPage />
             </ErrorBoundary>
           </ProtectedRoute>
         }
@@ -320,6 +321,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <BrowserRouter>
+            <Toaster position="top-right" toastOptions={{ style: { background: '#1e293b', color: '#fff', border: '1px solid #334155' } }} />
             <AppRoutes />
           </BrowserRouter>
         </AuthProvider>

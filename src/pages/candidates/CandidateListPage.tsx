@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -124,13 +125,14 @@ export const CandidateListPage: React.FC = () => {
         candidateIds: selectedIds,
         stageId: targetStage,
       });
+      toast.success(`Successfully moved ${selectedIds.length} candidate(s)`);
       setShowMoveModal(false);
       setSelectedIds([]);
       setTargetStage('');
       await fetchData(true);
     } catch (error) {
       console.error('Failed to move candidates:', error);
-      alert('Failed to move candidates. Please try again.');
+      toast.error('Failed to move candidates. Please try again.');
     } finally {
       setMovingCandidates(false);
     }
@@ -186,35 +188,14 @@ export const CandidateListPage: React.FC = () => {
   );
 
   const handleExport = async () => {
+    if (!jdId) return;
+    const toastId = toast.loading('Generating candidate CSV export...');
     try {
-      // TODO: Implement actual CSV export from backend
-      const csvContent = candidates.map(c => ({
-        Name: c.name,
-        Email: c.email,
-        Phone: c.phone,
-        College: c.college,
-        Degree: c.degree,
-        Branch: c.branch || 'N/A',
-        CGPA: c.cgpa || 'N/A',
-        PassOutYear: c.passOutYear,
-        Eligible: c.isEligible ? 'Yes' : 'No',
-        Stage: c.currentStage?.name || 'N/A',
-      }));
-      
-      const csv = [
-        Object.keys(csvContent[0]).join(','),
-        ...csvContent.map(row => Object.values(row).join(','))
-      ].join('\n');
-      
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `candidates_${jd?.title || 'export'}_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
+      await candidateAPI.exportCSV(jdId, filters);
+      toast.success('Candidate CSV exported successfully', { id: toastId });
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export failed. Please try again.');
+      toast.error('Export failed. Please try again.', { id: toastId });
     }
   };
 
@@ -222,7 +203,7 @@ export const CandidateListPage: React.FC = () => {
   const handleBulkEmail = () => {
     if (!jdId) return;
     if (selectedIds.length === 0) {
-      alert('Please select at least one candidate.');
+      toast.error('Please select at least one candidate.');
       return;
     }
     navigate(`/emails/send?jdId=${jdId}&candidateIds=${selectedIds.join(',')}`);
@@ -240,31 +221,36 @@ export const CandidateListPage: React.FC = () => {
             e.stopPropagation();
             toggleSelection(candidate.id);
           }}
-          className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-purple-500 focus:ring-purple-500 cursor-pointer"
+          className="w-4 h-4 rounded bg-slate-800 border-slate-700 text-indigo-500 focus:ring-indigo-500 cursor-pointer"
         />
       ),
     },
     {
       key: 'name',
-      label: 'Name',
+      label: 'Candidate',
       render: (candidate: Candidate) => (
-        <div>
-          <p className="font-semibold text-white hover:text-purple-400 transition-colors">
-            {candidate.name}
-          </p>
-          <p className="text-xs text-slate-400">{candidate.email}</p>
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-full gradient-secondary flex items-center justify-center text-white font-bold text-xs shadow-xs">
+            {candidate.name ? candidate.name.charAt(0).toUpperCase() : 'C'}
+          </div>
+          <div>
+            <p className="font-bold text-white group-hover:text-indigo-400 transition-colors text-sm">
+              {candidate.name}
+            </p>
+            <p className="text-xs text-slate-400">{candidate.email}</p>
+          </div>
         </div>
       ),
     },
     {
       key: 'college',
-      label: 'College',
+      label: 'College & Degree',
       render: (candidate: Candidate) => (
         <div>
-          <p className="text-sm text-slate-200">{candidate.college}</p>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs font-semibold text-slate-200">{candidate.college}</p>
+          <p className="text-[11px] text-slate-400">
             {candidate.degree}
-            {candidate.branch && ` - ${candidate.branch}`}
+            {candidate.branch && ` • ${candidate.branch}`}
             {candidate.stream && ` (${candidate.stream})`}
           </p>
         </div>
@@ -272,26 +258,26 @@ export const CandidateListPage: React.FC = () => {
     },
     {
       key: 'academics',
-      label: 'Academics',
+      label: 'Academic Merit',
       render: (candidate: Candidate) => (
         <div>
-          <p className="text-sm text-slate-200">
+          <span className="inline-flex items-center text-xs font-bold text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
             CGPA: {candidate.cgpa ? Number(candidate.cgpa).toFixed(2) : 'N/A'}
-          </p>
-          <p className="text-xs text-slate-400">Year: {candidate.passOutYear}</p>
+          </span>
+          <p className="text-[11px] text-slate-400 mt-0.5">Year: {candidate.passOutYear}</p>
         </div>
       ),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Eligibility & Status',
       render: (candidate: Candidate) => (
-        <div className="space-y-1">
+        <div className="flex items-center gap-1.5 flex-wrap">
           <Badge variant={candidate.isEligible ? 'success' : 'error'}>
             {candidate.isEligible ? 'Eligible' : 'Not Eligible'}
           </Badge>
           {candidate.applicationStatus && (
-            <Badge variant="info">
+            <Badge variant="purple">
               {candidate.applicationStatus}
             </Badge>
           )}
@@ -300,7 +286,7 @@ export const CandidateListPage: React.FC = () => {
     },
     {
       key: 'stage',
-      label: 'Stage',
+      label: 'Current Stage',
       render: (candidate: Candidate) => (
         <Badge variant="info">{candidate.currentStage?.name || 'N/A'}</Badge>
       ),
@@ -315,18 +301,18 @@ export const CandidateListPage: React.FC = () => {
               href={candidate.resumeLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
               title="View Resume"
             >
-              <ExternalLink className="h-4 w-4 text-blue-400" />
+              <ExternalLink className="h-4 w-4" />
             </a>
           )}
           <button
             onClick={() => navigate(`/candidates/${candidate.id}`)}
-            className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-indigo-400 hover:bg-slate-800 transition-colors"
             title="View Details"
           >
-            <ArrowRight className="h-4 w-4 text-purple-400" />
+            <ArrowRight className="h-4 w-4" />
           </button>
         </div>
       ),

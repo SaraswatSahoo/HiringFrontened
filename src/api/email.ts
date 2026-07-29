@@ -53,7 +53,7 @@ export const emailAPI = {
    */
   getById: async (id: string): Promise<EmailWithRelations> => {
     const { data } = await apiClient.get(`/communications/email/${id}`);
-    return data.email;
+    return data.data || data.email;
   },
 
   /**
@@ -101,7 +101,7 @@ export const emailAPI = {
     endDate?: string;
   }): Promise<EmailStats> => {
     const { data } = await apiClient.get('/communications/stats', { params });
-    return data.stats;
+    return data.data || data.stats;
   },
 
   /**
@@ -110,7 +110,7 @@ export const emailAPI = {
    */
   getStatsByJD: async (jdId: string): Promise<EmailStats> => {
     const { data } = await apiClient.get(`/communications/jd/${jdId}/stats`);
-    return data.stats;
+    return data.data || data.stats;
   },
 };
 
@@ -132,7 +132,7 @@ export const templateAPI = {
    */
   getById: async (id: string): Promise<EmailTemplate> => {
     const { data } = await apiClient.get(`/communications/template/${id}`);
-    return data.template;
+    return data.data || data.template;
   },
 
   /**
@@ -141,7 +141,7 @@ export const templateAPI = {
    */
   create: async (data: CreateTemplateDto): Promise<EmailTemplate> => {
     const { data: result } = await apiClient.post('/communications/template', data);
-    return result.template;
+    return result.data || result.template;
   },
 
   /**
@@ -150,7 +150,7 @@ export const templateAPI = {
    */
   update: async (id: string, updateData: UpdateTemplateDto): Promise<EmailTemplate> => {
     const { data } = await apiClient.put(`/communications/template/${id}`, updateData);
-    return data.template;
+    return data.data || data.template;
   },
 
   /**
@@ -171,7 +171,7 @@ export const templateAPI = {
     variables?: Record<string, any>
   ): Promise<TemplatePreviewResponse> => {
     const { data } = await apiClient.post(`/communications/template/${id}/preview`, { variables });
-    return data.preview;
+    return data.preview || data.data;
   },
 };
 

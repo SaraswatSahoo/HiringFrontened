@@ -1,5 +1,4 @@
-import React, { useEffect } from 'react';
-import type { ReactNode } from 'react';
+import React, { type ReactNode, useEffect } from 'react';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -18,50 +17,55 @@ export const Modal: React.FC<ModalProps> = ({
   size = 'md',
 }) => {
   useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+
     if (isOpen) {
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      window.addEventListener('keydown', handleEscape);
     }
+
     return () => {
       document.body.style.overflow = 'unset';
+      window.removeEventListener('keydown', handleEscape);
     };
-  }, [isOpen]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  const sizes = {
+  const sizeClasses = {
     sm: 'max-w-md',
-    md: 'max-w-2xl',
-    lg: 'max-w-4xl',
-    xl: 'max-w-6xl',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center animate-fade-in">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+      {/* Backdrop Overlay */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/75 backdrop-blur-md transition-opacity"
         onClick={onClose}
       />
 
-      {/* Modal */}
+      {/* Modal Dialog */}
       <div
-        className={`relative glass rounded-2xl shadow-2xl ${sizes[size]} w-full mx-4 max-h-[90vh] overflow-hidden animate-slide-in-up`}
+        className={`relative w-full ${sizeClasses[size]} glass-dropdown rounded-2xl border border-slate-700/80 shadow-2xl overflow-hidden animate-scale-in z-10`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-700">
-          <h2 className="text-2xl font-bold text-white">{title}</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/60">
+          <h2 className="text-lg font-bold text-white tracking-wide">{title}</h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">{children}</div>
+        {/* Content Body */}
+        <div className="p-6 max-h-[calc(85vh-8rem)] overflow-y-auto">{children}</div>
       </div>
     </div>
   );

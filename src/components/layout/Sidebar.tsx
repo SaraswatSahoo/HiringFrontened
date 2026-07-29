@@ -9,8 +9,9 @@ import {
   LogOut,
   Menu,
   X,
-  Mail,          // ✅ NEW
-  FileText,      // ✅ NEW
+  Mail,
+  FileText,
+  Zap,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -39,61 +40,71 @@ export const Sidebar: React.FC = () => {
 
   const SidebarContent = () => (
     <>
-      {/* Logo */}
-      <div className="p-6 border-b border-slate-700">
+      {/* Brand Logo */}
+      <div className="p-6 border-b border-slate-800/80">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
-            <Briefcase className="h-6 w-6 text-white" />
+          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-md shadow-indigo-500/20">
+            <Zap className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">HireFlow</h1>
-            <p className="text-xs text-slate-400">Bulk Hiring Platform</p>
+            <h1 className="text-lg font-extrabold text-white tracking-tight flex items-center">
+              HireFlow <span className="text-indigo-400 text-xs ml-1 font-semibold">2.0</span>
+            </h1>
+            <p className="text-[11px] font-medium text-slate-400">Campus Hiring Suite</p>
           </div>
         </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            onClick={() => setIsMobileOpen(false)}
-            className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-              isActive(item.path)
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/30'
-                : 'text-slate-300 hover:bg-slate-800 hover:text-white'
-            }`}
-          >
-            <item.icon className="h-5 w-5" />
-            <span className="font-medium">{item.label}</span>
-          </Link>
-        ))}
+      {/* Navigation Links */}
+      <nav className="flex-1 p-4 space-y-1.5 overflow-y-auto">
+        <p className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
+          Navigation
+        </p>
+        {menuItems.map((item) => {
+          const active = isActive(item.path);
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              onClick={() => setIsMobileOpen(false)}
+              className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 group relative ${
+                active
+                  ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white border border-indigo-500/30 shadow-md shadow-indigo-500/10'
+                  : 'text-slate-400 hover:bg-slate-800/60 hover:text-white'
+              }`}
+            >
+              {active && (
+                <span className="absolute left-0 top-2 bottom-2 w-1 bg-indigo-500 rounded-r-full shadow-glow" />
+              )}
+              <item.icon
+                className={`h-4 w-4 transition-transform group-hover:scale-110 ${
+                  active ? 'text-indigo-400' : 'text-slate-400 group-hover:text-slate-200'
+                }`}
+              />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      {/* User Profile */}
-      <div className="p-4 border-t border-slate-700">
-        <div className="glass rounded-lg p-4 mb-3">
-          <div className="flex items-center space-x-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-linear-to-r from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold">
-              {user?.name.charAt(0).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
-            </div>
+      {/* User Footer */}
+      <div className="p-4 border-t border-slate-800/80 space-y-3">
+        <div className="bg-slate-900/80 rounded-xl p-3 border border-slate-800 flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-xl gradient-secondary flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
           </div>
-          <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-500/20 text-purple-400 border border-purple-500/30">
-            {user?.role}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold text-white truncate">{user?.name}</p>
+            <p className="text-[10px] text-slate-400 truncate">{user?.role}</p>
           </div>
         </div>
 
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/30"
+          className="w-full flex items-center justify-center space-x-2 px-3 py-2 rounded-xl text-xs font-semibold text-rose-400 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 transition-all duration-200"
         >
-          <LogOut className="h-4 w-4" />
-          <span className="font-medium">Logout</span>
+          <LogOut className="h-3.5 w-3.5" />
+          <span>Log Out</span>
         </button>
       </div>
     </>
@@ -101,24 +112,25 @@ export const Sidebar: React.FC = () => {
 
   return (
     <>
-      {/* Mobile Menu Button */}
+      {/* Mobile Drawer Trigger */}
       <button
         onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg glass"
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-xl glass text-white"
       >
-        {isMobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
 
-      {/* Mobile Sidebar Overlay */}
+      {/* Mobile Backdrop */}
       {isMobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-40 bg-black/80 backdrop-blur-sm"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
 
+      {/* Sidebar Navigation */}
       <aside
-        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 glass border-r border-slate-700 flex flex-col transition-transform duration-300 ${
+        className={`fixed lg:static inset-y-0 left-0 z-40 w-64 glass border-r border-slate-800/80 flex flex-col transition-transform duration-300 ${
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
