@@ -1,6 +1,6 @@
-// src/pages/bulk/UploadHistoryPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -89,17 +89,18 @@ export const UploadHistoryPage: React.FC = () => {
   };
 
   const handleDelete = async (uploadId: string) => {
-    if (!confirm('Are you sure you want to delete this upload record?')) {
+    if (!window.confirm('Are you sure you want to delete this upload record?')) {
       return;
     }
 
     try {
       setDeletingId(uploadId);
       await bulkAPI.delete(uploadId);
+      toast.success('Upload record deleted successfully');
       fetchUploads(); // Refresh list
     } catch (error) {
       console.error('Failed to delete upload:', error);
-      alert('Failed to delete upload. Please try again.');
+      toast.error('Failed to delete upload. Please try again.');
     } finally {
       setDeletingId(null);
     }
@@ -109,12 +110,12 @@ export const UploadHistoryPage: React.FC = () => {
     try {
       setRetryingId(uploadId);
       await bulkAPI.retry(uploadId);
-      alert('Upload retry initiated. The status will update shortly.');
+      toast.success('Upload retry initiated. The status will update shortly.');
       // Wait a bit then refresh
       setTimeout(fetchUploads, 2000);
     } catch (error) {
       console.error('Failed to retry upload:', error);
-      alert('Failed to retry upload. Please try again.');
+      toast.error('Failed to retry upload. Please try again.');
     } finally {
       setRetryingId(null);
     }
@@ -123,9 +124,10 @@ export const UploadHistoryPage: React.FC = () => {
   const handleDownloadErrorLog = async (uploadId: string) => {
     try {
       await bulkAPI.downloadErrorLog(uploadId);
+      toast.success('Error log downloaded');
     } catch (error) {
       console.error('Failed to download error log:', error);
-      alert('Failed to download error log. Please try again.');
+      toast.error('Failed to download error log. Please try again.');
     }
   };
 

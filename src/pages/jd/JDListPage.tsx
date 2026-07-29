@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -52,7 +53,7 @@ export const JDListPage: React.FC = () => {
       setTotal(pagination.total);
     } catch (error: any) {
       console.error('Failed to fetch JDs:', error);
-      alert(error.response?.data?.error || 'Failed to fetch job descriptions');
+      toast.error(error.response?.data?.error || 'Failed to fetch job descriptions');
     } finally {
       setLoading(false);
     }
@@ -70,11 +71,11 @@ export const JDListPage: React.FC = () => {
 
     try {
       await jdAPI.delete(id);
-      alert('Job Description deleted successfully');
+      toast.success('Job Description deleted successfully');
       fetchJDs();
     } catch (error: any) {
       console.error('Failed to delete JD:', error);
-      alert(error.response?.data?.error || 'Failed to delete JD. It may have associated candidates.');
+      toast.error(error.response?.data?.error || 'Failed to delete JD. It may have associated candidates.');
     }
   };
 

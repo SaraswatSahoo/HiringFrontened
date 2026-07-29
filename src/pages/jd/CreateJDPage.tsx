@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -216,7 +217,7 @@ export const CreateJDPage: React.FC = () => {
           });
         }
       } else {
-        alert('Please enter a valid year between 2020 and 2030');
+        toast.error('Please enter a valid year between 2020 and 2030');
       }
     }
   };

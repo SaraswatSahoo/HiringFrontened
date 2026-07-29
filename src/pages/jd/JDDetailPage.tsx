@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -111,12 +112,13 @@ export const JDDetailPage: React.FC = () => {
     try {
       setStatusChanging(true);
       await jdAPI.updateStatus(id, newStatus);
+      toast.success(`Job Description status updated to ${newStatus}`);
       setShowStatusModal(false);
       await fetchJDDetails(true);
     } catch (error: any) {
       console.error('Failed to update status:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to update status';
-      alert(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setStatusChanging(false);
     }
@@ -135,11 +137,12 @@ export const JDDetailPage: React.FC = () => {
 
     try {
       const { jd: duplicatedJD } = await jdAPI.duplicate(id);
+      toast.success('Job Description duplicated successfully');
       navigate(`/jobs/${duplicatedJD.id}`);
     } catch (error: any) {
       console.error('Failed to duplicate JD:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to duplicate JD';
-      alert(errorMessage);
+      toast.error(errorMessage);
     }
   };
 

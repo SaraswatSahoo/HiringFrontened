@@ -1,6 +1,6 @@
-// src/pages/email/SendEmailPage.tsx
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -124,14 +124,14 @@ const SendEmailPage: React.FC = () => {
 
   const handleSend = async () => {
     if (!selectedJD || !subject || (!message && !htmlBody)) {
-      alert('Please fill in all required fields');
+      toast.error('Please fill in all required fields');
       return;
     }
 
     try {
       if (emailType === 'INDIVIDUAL') {
         if (selectedCandidates.length === 0) {
-          alert('Please select at least one candidate');
+          toast.error('Please select at least one candidate');
           return;
         }
 
@@ -160,10 +160,11 @@ const SendEmailPage: React.FC = () => {
         });
       }
 
+      toast.success('Email sent successfully!');
       navigate('/emails');
     } catch (error) {
       console.error('Failed to send email:', error);
-      alert('Failed to send email. Please try again.');
+      toast.error('Failed to send email. Please try again.');
     }
   };
 

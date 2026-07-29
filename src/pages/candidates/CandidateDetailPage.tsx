@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
@@ -8,7 +9,8 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Modal } from '../../components/ui/Modal';
 import { candidateAPI } from '../../api/candidate';
 import { jdAPI } from '../../api/jd';
-import type { Candidate, Stage, MoveStageData } from '../../types';
+import feedbackAPI from '../../api/feedback';
+import type { Candidate, Stage, MoveStageData, Feedback } from '../../types';
 import {
   Mail,
   Phone,
@@ -33,6 +35,7 @@ import {
   AlertCircle,
   Star,
   MessageSquare,
+  Plus,
 } from 'lucide-react';
 
 export const CandidateDetailPage: React.FC = () => {
@@ -48,11 +51,35 @@ export const CandidateDetailPage: React.FC = () => {
   const [interviewMode, setInterviewMode] = useState<'Online' | 'Offline' | 'Telephonic' | 'Video'>('Online');
   const [interviewerName, setInterviewerName] = useState('');
 
+  // Feedback State
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+  const [feedbackAverages, setFeedbackAverages] = useState<any>(null);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [newRating, setNewRating] = useState(5);
+  const [newComments, setNewComments] = useState('');
+  const [newTechnical, setNewTechnical] = useState(5);
+  const [newCommunication, setNewCommunication] = useState(5);
+  const [newCultureFit, setNewCultureFit] = useState(5);
+  const [newProblemSolving, setNewProblemSolving] = useState(5);
+  const [newRecommendation, setNewRecommendation] = useState<'STRONG_YES' | 'YES' | 'MAYBE' | 'NO'>('YES');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
+
   useEffect(() => {
     if (id) {
       fetchCandidateDetails();
+      fetchFeedbacks();
     }
   }, [id]);
+
+  const fetchFeedbacks = async () => {
+    try {
+      const res = await feedbackAPI.getByCandidate(id!);
+      setFeedbacks(res.feedbacks || []);
+      setFeedbackAverages(res.averages || null);
+    } catch (err) {
+      console.error('Failed to fetch candidate feedbacks:', err);
+    }
+  };
 
   const fetchCandidateDetails = async () => {
     try {
@@ -83,6 +110,7 @@ export const CandidateDetailPage: React.FC = () => {
       };
 
       await candidateAPI.moveStage(id!, moveData);
+      toast.success('Candidate stage updated successfully');
       setShowMoveModal(false);
       setSelectedStage('');
       setMoveNotes('');
@@ -91,6 +119,7 @@ export const CandidateDetailPage: React.FC = () => {
       fetchCandidateDetails();
     } catch (error) {
       console.error('Failed to move candidate:', error);
+      toast.error('Failed to move candidate');
     }
   };
 
@@ -99,9 +128,45 @@ export const CandidateDetailPage: React.FC = () => {
 
     try {
       await candidateAPI.delete(id!);
+      toast.success('Candidate deleted successfully');
       navigate(`/candidates?jdId=${candidate?.jdId}`);
     } catch (error) {
       console.error('Failed to delete candidate:', error);
+      toast.error('Failed to delete candidate');
+    }
+  };
+
+  const handleSubmitFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id || !newComments.trim()) {
+      toast.error('Please enter feedback comments');
+      return;
+    }
+
+    setSubmittingFeedback(true);
+    try {
+      await feedbackAPI.create({
+        candidateId: id,
+        rating: newRating,
+        comments: newComments,
+        technicalSkills: newTechnical,
+        communication: newCommunication,
+        cultureFit: newCultureFit,
+        problemSolving: newProblemSolving,
+        recommendation: newRecommendation,
+      });
+
+      toast.success('Feedback submitted successfully');
+      setShowFeedbackModal(false);
+      setNewComments('');
+      setNewRating(5);
+      fetchFeedbacks();
+      fetchCandidateDetails();
+    } catch (error: any) {
+      console.error('Failed to submit feedback:', error);
+      toast.error(error.response?.data?.error || 'Failed to submit feedback');
+    } finally {
+      setSubmittingFeedback(false);
     }
   };
 
@@ -153,6 +218,10 @@ export const CandidateDetailPage: React.FC = () => {
           <Button variant="secondary" size="sm" onClick={handleSendEmail}>
             <Mail className="h-4 w-4 mr-2" />
             Send Email
+          </Button>
+          <Button variant="secondary" size="sm" onClick={() => setShowFeedbackModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Feedback
           </Button>
           <Button variant="ghost" size="sm" onClick={() => setShowMoveModal(true)}>
             <ArrowRight className="h-4 w-4 mr-2" />
@@ -809,32 +878,186 @@ export const CandidateDetailPage: React.FC = () => {
               </div>
             </Card>
 
-            {/* Feedback Summary */}
-            {candidate._count?.feedbacks && candidate._count.feedbacks > 0 && (
-              <Card className="animate-fade-in">
-                <h3 className="text-lg font-semibold text-white mb-4 flex items-center">
+            {/* Feedback & Interviewer Evaluation */}
+            <Card className="animate-fade-in">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white flex items-center">
                   <MessageSquare className="h-5 w-5 mr-2 text-teal-400" />
-                  Feedback
+                  Interviewer Feedback ({feedbacks.length})
                 </h3>
-                <div className="text-center">
-                  <p className="text-3xl font-bold text-white mb-1">
-                    {candidate._count.feedbacks}
-                  </p>
-                  <p className="text-xs text-slate-400">Total Feedbacks</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full mt-4"
-                    onClick={() => navigate(`/candidates/${id}/feedback`)}
-                  >
-                    View All Feedback
+                <Button variant="secondary" size="sm" onClick={() => setShowFeedbackModal(true)}>
+                  <Plus className="h-3.5 w-3.5 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {feedbackAverages && (
+                <div className="bg-slate-900/60 rounded-lg p-3 border border-slate-700/60 mb-4 space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-slate-300">
+                    <span>Overall Avg Rating:</span>
+                    <span className="font-semibold text-amber-400 flex items-center">
+                      <Star className="h-3.5 w-3.5 fill-amber-400 mr-1" />
+                      {feedbackAverages.rating ? Number(feedbackAverages.rating).toFixed(1) : 'N/A'} / 5
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-slate-400 pt-2 border-t border-slate-800">
+                    <div>Tech: <span className="text-white">{feedbackAverages.technicalSkills ? Number(feedbackAverages.technicalSkills).toFixed(1) : 'N/A'}</span></div>
+                    <div>Comm: <span className="text-white">{feedbackAverages.communication ? Number(feedbackAverages.communication).toFixed(1) : 'N/A'}</span></div>
+                    <div>Culture: <span className="text-white">{feedbackAverages.cultureFit ? Number(feedbackAverages.cultureFit).toFixed(1) : 'N/A'}</span></div>
+                    <div>Problem Solving: <span className="text-white">{feedbackAverages.problemSolving ? Number(feedbackAverages.problemSolving).toFixed(1) : 'N/A'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {feedbacks.length === 0 ? (
+                <div className="text-center py-6 text-slate-400 text-sm">
+                  <p>No feedback submitted yet.</p>
+                  <Button variant="ghost" size="sm" className="mt-2 text-purple-400" onClick={() => setShowFeedbackModal(true)}>
+                    + Submit first feedback
                   </Button>
                 </div>
-              </Card>
-            )}
+              ) : (
+                <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+                  {feedbacks.map((item) => (
+                    <div key={item.id} className="bg-slate-900/80 rounded-lg p-3 border border-slate-700/50 space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-purple-300">{item.givenBy?.name || 'Interviewer'}</span>
+                        <span className="text-slate-400 flex items-center text-amber-400 font-bold">
+                          <Star className="h-3 w-3 fill-amber-400 mr-1" /> {item.rating}/5
+                        </span>
+                      </div>
+                      {item.recommendation && (
+                        <div>
+                          <Badge variant={item.recommendation.includes('YES') ? 'success' : item.recommendation === 'NO' ? 'error' : 'warning'}>
+                            {item.recommendation}
+                          </Badge>
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-300 italic">{item.comments}</p>
+                      <span className="text-[10px] text-slate-500 block">
+                        {new Date(item.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           </div>
         </div>
       </div>
+
+      {/* Submit Feedback Modal */}
+      <Modal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        title="Submit Interviewer Feedback"
+        size="md"
+      >
+        <form onSubmit={handleSubmitFeedback} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Overall Rating (1 - 5 stars)</label>
+            <div className="flex items-center space-x-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  type="button"
+                  key={star}
+                  onClick={() => setNewRating(star)}
+                  className="p-1 focus:outline-none"
+                >
+                  <Star
+                    className={`h-6 w-6 ${
+                      star <= newRating ? 'text-amber-400 fill-amber-400' : 'text-slate-600'
+                    }`}
+                  />
+                </button>
+              ))}
+              <span className="text-white font-bold ml-2">{newRating} / 5</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Technical Skills (1-5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newTechnical}
+                onChange={(e) => setNewTechnical(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Communication (1-5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newCommunication}
+                onChange={(e) => setNewCommunication(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Culture Fit (1-5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newCultureFit}
+                onChange={(e) => setNewCultureFit(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1">Problem Solving (1-5)</label>
+              <input
+                type="number"
+                min="1"
+                max="5"
+                value={newProblemSolving}
+                onChange={(e) => setNewProblemSolving(Number(e.target.value))}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Recommendation</label>
+            <select
+              value={newRecommendation}
+              onChange={(e) => setNewRecommendation(e.target.value as any)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm"
+            >
+              <option value="STRONG_YES">Strong Yes</option>
+              <option value="YES">Yes</option>
+              <option value="MAYBE">Maybe</option>
+              <option value="NO">No</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">Feedback Comments <span className="text-red-400">*</span></label>
+            <textarea
+              required
+              rows={4}
+              value={newComments}
+              onChange={(e) => setNewComments(e.target.value)}
+              placeholder="Provide detailed feedback on candidate strengths, weaknesses, and interview observations..."
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm placeholder-slate-500 focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-3 border-t border-slate-700">
+            <Button variant="ghost" type="button" onClick={() => setShowFeedbackModal(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={submittingFeedback}>
+              {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Move Stage Modal */}
       <Modal

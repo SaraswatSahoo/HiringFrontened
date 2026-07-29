@@ -260,4 +260,33 @@ export const candidateAPI = {
     });
     return data;
   },
+
+  /**
+   * Export candidates as CSV
+   */
+  exportCSV: async (jdId: string, filters?: CandidateFilters): Promise<void> => {
+    const response = await apiClient.get(`/candidates/jd/${jdId}/export`, {
+      params: filters,
+      responseType: 'blob',
+    });
+
+    const contentDisposition = response.headers['content-disposition'];
+    let filename = `candidates_${jdId}.csv`;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) {
+        filename = match[1];
+      }
+    }
+
+    const blob = new Blob([response.data], { type: 'text/csv;charset=utf-8;' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  },
 };

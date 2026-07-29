@@ -1,6 +1,6 @@
-// src/pages/bulk/BulkUploadPage.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { Layout } from '../../components/layout/Layout';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';1
@@ -95,13 +95,13 @@ export const BulkUploadPage: React.FC = () => {
       const isValidType = validTypes.includes(selectedFile.type) || validExtensions.includes(fileExt);
       
       if (!isValidType) {
-        alert('Please select a valid CSV or Excel file');
+        toast.error('Please select a valid CSV or Excel file');
         return;
       }
 
       // Check file size (50MB limit)
       if (selectedFile.size > 50 * 1024 * 1024) {
-        alert('File size exceeds 50MB limit');
+        toast.error('File size exceeds 50MB limit');
         return;
       }
 
@@ -114,7 +114,7 @@ export const BulkUploadPage: React.FC = () => {
 
   const handleValidate = async () => {
     if (!file || !selectedJD) {
-      alert('Please select both a JD and a file');
+      toast.error('Please select both a JD and a file');
       return;
     }
 
@@ -124,9 +124,14 @@ export const BulkUploadPage: React.FC = () => {
     try {
       const result = await bulkAPI.validateCSV(selectedJD, file);
       setValidation(result);
+      if (result.canUpload) {
+        toast.success(`Validation successful! ${result.validRows} valid rows ready.`);
+      } else {
+        toast.error(`Validation found ${result.invalidRows} invalid rows.`);
+      }
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || 'Validation failed. Please try again.';
-      alert(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setValidating(false);
     }
@@ -134,7 +139,7 @@ export const BulkUploadPage: React.FC = () => {
 
   const handleUpload = async () => {
     if (!file || !selectedJD) {
-      alert('Please select both a JD and a file');
+      toast.error('Please select both a JD and a file');
       return;
     }
 
@@ -155,9 +160,10 @@ export const BulkUploadPage: React.FC = () => {
       setUploadResult(result);
       setPollingUploadId(result.uploadId);
       setValidation(null); // Clear validation after upload
+      toast.success('Bulk upload initiated successfully');
     } catch (error: any) {
       const errorMsg = error.response?.data?.error || error.response?.data?.details?.[0] || 'Upload failed. Please try again.';
-      alert(errorMsg);
+      toast.error(errorMsg);
       setUploadResult(null);
       setUploadStatus(null);
     } finally {
@@ -169,9 +175,10 @@ export const BulkUploadPage: React.FC = () => {
     try {
       setDownloadingSample(true);
       await bulkAPI.downloadSample();
+      toast.success('Sample template downloaded');
     } catch (error) {
       console.error('Failed to download sample:', error);
-      alert('Failed to download sample CSV. Please try again.');
+      toast.error('Failed to download sample CSV. Please try again.');
     } finally {
       setDownloadingSample(false);
     }
@@ -181,9 +188,10 @@ export const BulkUploadPage: React.FC = () => {
     try {
       setDownloadingExtended(true);
       await bulkAPI.downloadExtendedSample();
+      toast.success('Extended sample template downloaded');
     } catch (error) {
       console.error('Failed to download extended sample:', error);
-      alert('Failed to download extended sample CSV. Please try again.');
+      toast.error('Failed to download extended sample CSV. Please try again.');
     } finally {
       setDownloadingExtended(false);
     }
@@ -193,9 +201,10 @@ export const BulkUploadPage: React.FC = () => {
     if (!uploadStatus?.id) return;
     try {
       await bulkAPI.downloadErrorLog(uploadStatus.id);
+      toast.success('Error log downloaded');
     } catch (error) {
       console.error('Failed to download error log:', error);
-      alert('Failed to download error log. Please try again.');
+      toast.error('Failed to download error log. Please try again.');
     }
   };
 
@@ -645,10 +654,11 @@ export const BulkUploadPage: React.FC = () => {
                           onClick={async () => {
                             try {
                               await bulkAPI.retry(uploadStatus.id);
+                              toast.success('Retry initiated successfully');
                               setPollingUploadId(uploadStatus.id);
                             } catch (error) {
                               console.error('Retry failed:', error);
-                              alert('Failed to retry upload');
+                              toast.error('Failed to retry upload');
                             }
                           }}
                         >
